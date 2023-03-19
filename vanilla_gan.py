@@ -17,7 +17,8 @@ import imageio
 import numpy as np
 import torch
 import torch.optim as optim
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
+import wandb
 
 import utils
 from data_loader import get_data_loader
@@ -166,18 +167,26 @@ def training_loop(train_dataloader, opts):
             real_images = batch
             real_images = utils.to_var(real_images)
 
-            # TRAIN THE DISCRIMINATOR
-            # 1. Compute the discriminator loss on real images
-            D_real_loss = torch.mean((D(real_images) - 1) ** 2)
+            if opts.use_diffaug:
+                aug_real_images = DiffAugment(real_images, policy=policy)
+                D_real_loss = torch.mean((D(aug_real_images) - 1) ** 2)
+            else:
+                # TRAIN THE DISCRIMINATOR
+                # 1. Compute the discriminator loss on real images
+                D_real_loss = torch.mean((D(real_images) - 1) ** 2)
 
             # 2. Sample noise
-            noise = 
+            noise = sample_noise(opts.batch_size, opts.noise_size)
 
             # 3. Generate fake images from the noise
-            fake_images = 
+            fake_images = G(noise)
 
-            # 4. Compute the discriminator loss on the fake images
-            D_fake_loss = torch.mean((D(fake_images.detach())) ** 2)
+            if opts.use_diffaug:
+                aug_fake_images = DiffAugment(fake_images, policy=policy)
+                D_fake_loss = torch.mean((D(aug_fake_images.detach())) ** 2)
+            else:
+                # 4. Compute the discriminator loss on the fake images
+                D_fake_loss = torch.mean((D(fake_images.detach())) ** 2)
             D_total_loss = (D_real_loss + D_fake_loss) / 2
 
             # update the discriminator D
@@ -187,13 +196,17 @@ def training_loop(train_dataloader, opts):
 
             # TRAIN THE GENERATOR
             # 1. Sample noise
-            noise = 
+            noise = sample_noise(opts.batch_size, opts.noise_size)
 
             # 2. Generate fake images from the noise
-            fake_images = 
+            fake_images = G(noise)
 
-            # 3. Compute the generator loss
-            G_loss = 
+            if opts.use_diffaug:
+                aug_fake_images = DiffAugment(fake_images, policy=policy)
+                G_loss = torch.mean((D(aug_fake_images) - 1) ** 2)
+            else:
+                # 3. Compute the generator loss
+                G_loss = torch.mean((D(fake_images) - 1) ** 2)
 
             # update the generator G
             g_optimizer.zero_grad()
@@ -209,10 +222,17 @@ def training_loop(train_dataloader, opts):
                         D_fake_loss.item(), G_loss.item()
                     )
                 )
-                logger.add_scalar('D/fake', D_fake_loss, iteration)
-                logger.add_scalar('D/real', D_real_loss, iteration)
-                logger.add_scalar('D/total', D_total_loss, iteration)
-                logger.add_scalar('G/total', G_loss, iteration)
+                # Switch to wandb
+                wandb.log({
+                    'D/fake': D_fake_loss.item(),
+                    'D/real': D_real_loss.item(),
+                    'D/total': D_total_loss.item(),
+                    'G/total': G_loss.item(),
+                }, step=iteration)
+                # logger.add_scalar('D/fake', D_fake_loss, iteration)
+                # logger.add_scalar('D/real', D_real_loss, iteration)
+                # logger.add_scalar('D/total', D_total_loss, iteration)
+                # logger.add_scalar('G/total', G_loss, iteration)
 
             # Save the generated samples
             if iteration % opts.sample_every == 0:
@@ -246,7 +266,8 @@ def create_parser():
 
     # Model hyper-parameters
     parser.add_argument('--image_size', type=int, default=64)
-    parser.add_argument('--conv_dim', type=int, default=32)
+    parser.add_argument('--conv_dim', type=int, default=64)
+    # parser.add_argument('--conv_dim', type=int, default=32)
     parser.add_argument('--noise_size', type=int, default=100)
 
     # Training hyper-parameters
@@ -278,16 +299,23 @@ if __name__ == '__main__':
     opts = parser.parse_args()
 
     batch_size = opts.batch_size
+
+    tag = f'vanilla_{opts.data_preprocess}{"_diffaug" if opts.use_diffaug else ""}'
     opts.sample_dir = os.path.join(
         'output/', opts.sample_dir,
-        '%s_%s' % (os.path.basename(opts.data), opts.data_preprocess)
+        tag
     )
-    if opts.use_diffaug:
-        opts.sample_dir += '_diffaug'
+    # if opts.use_diffaug:
+        # opts.sample_dir += '_diffaug'
 
     if os.path.exists(opts.sample_dir):
         cmd = 'rm %s/*' % opts.sample_dir
         os.system(cmd)
-    logger = SummaryWriter(opts.sample_dir)
+    wandb.init(
+        project='16726_p3',
+        config=opts,
+        name=tag,
+    )
+    # logger = SummaryWriter(opts.sample_dir)
     print(opts)
     main(opts)

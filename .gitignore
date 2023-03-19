@@ -1,4 +1,8 @@
 data
+checkpoints_vanilla
+./vanilla
+output
+wandb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

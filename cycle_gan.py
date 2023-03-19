@@ -25,7 +25,9 @@ import argparse
 import os
 
 import imageio
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
+import wandb
+
 import torch
 import torch.optim as optim
 import numpy as np
@@ -193,21 +195,22 @@ def training_loop(dataloader_X, dataloader_Y, opts):
 
         # TRAIN THE DISCRIMINATORS
         # 1. Compute the discriminator losses on real images
-        D_X_loss = 
-        D_Y_loss = 
+        D_X_loss = torch.mean((D_X(images_X) - 1)**2)
+        D_Y_loss = torch.mean((D_Y(images_Y) - 1)**2)
 
         d_real_loss = D_X_loss + D_Y_loss
 
         # 2. Generate domain-X-like images based on real images in domain Y
-        fake_X = 
+        fake_X = G_YtoX(images_Y)
 
         # 3. Compute the loss for D_X
-        D_X_loss = 
+        D_X_loss = torch.mean(D_X(fake_X)**2)
 
         # 4. Generate domain-Y-like images based on real images in domain X
+        fake_Y = G_XtoY(images_X)
 
         # 5. Compute the loss for D_Y
-        D_Y_loss = 
+        D_Y_loss = torch.mean(D_Y(fake_Y)**2)
 
         d_fake_loss = D_X_loss + D_Y_loss
 
@@ -218,45 +221,58 @@ def training_loop(dataloader_X, dataloader_Y, opts):
         d_optimizer.step()
 
         # plot the losses in tensorboard
-        logger.add_scalar('D/XY/real', D_X_loss, iteration)
-        logger.add_scalar('D/YX/real', D_Y_loss, iteration)
-        logger.add_scalar('D/XY/fake', D_X_loss, iteration)
-        logger.add_scalar('D/YX/fake', D_Y_loss, iteration)
+        log_dict = {
+            'D/XY/real': D_X_loss,
+            'D/YX/real': D_Y_loss,
+            'D/XY/fake': D_X_loss,
+            'D/YX/fake': D_Y_loss,
+        }
+        # logger.add_scalar('D/XY/real', D_X_loss, iteration)
+        # logger.add_scalar('D/YX/real', D_Y_loss, iteration)
+        # logger.add_scalar('D/XY/fake', D_X_loss, iteration)
+        # logger.add_scalar('D/YX/fake', D_Y_loss, iteration)
 
         # TRAIN THE GENERATORS
         # 1. Generate domain-X-like images based on real images in domain Y
-        fake_X = 
+        fake_X = G_YtoX(images_Y)
 
         # 2. Compute the generator loss based on domain X
-        g_loss = 
-        logger.add_scalar('G/XY/fake', g_loss, iteration)
+        g_loss = torch.mean((D_X(fake_X) - 1)**2)
+        # logger.add_scalar('G/XY/fake', g_loss, iteration)
+        log_dict['G/XY/fake'] = g_loss
 
         if opts.use_cycle_consistency_loss:
             # 3. Compute the cycle consistency loss (the reconstruction loss)
-            cycle_consistency_loss = 
+            cycle_consistency_loss = torch.mean(torch.abs(images_Y - G_XtoY(fake_X)))
 
             g_loss += opts.lambda_cycle * cycle_consistency_loss
-            logger.add_scalar('G/XY/cycle', opts.lambda_cycle * cycle_consistency_loss, iteration)
+            log_dict['G/XY/cycle'] = cycle_consistency_loss
+            # logger.add_scalar('G/XY/cycle', opts.lambda_cycle * cycle_consistency_loss, iteration)
 
         # X--Y-->X CYCLE
         # 1. Generate domain-Y-like images based on real images in domain X
-        fake_Y = 
+        fake_Y = G_XtoY(images_X)
 
         # 2. Compute the generator loss based on domain Y
-        g_loss += 
-        logger.add_scalar('G/YX/fake', g_loss, iteration)
+        yx_loss = torch.mean((D_Y(fake_Y) - 1)**2)
+        g_loss += yx_loss
+        log_dict['G/YX/fake'] = yx_loss
+        # logger.add_scalar('G/YX/fake', g_loss, iteration)
 
         if opts.use_cycle_consistency_loss:
             # 3. Compute the cycle consistency loss (the reconstruction loss)
-            cycle_consistency_loss = 
+            cycle_consistency_loss = torch.mean(torch.abs(images_X - G_YtoX(fake_Y)))
 
             g_loss += opts.lambda_cycle * cycle_consistency_loss
-            logger.add_scalar('G/YX/cycle', cycle_consistency_loss, iteration)
+            log_dict['G/YX/cycle'] = cycle_consistency_loss
+            # logger.add_scalar('G/YX/cycle', cycle_consistency_loss, iteration)
 
         # backprop the aggregated g losses and update G_XtoY and G_YtoX
         g_optimizer.zero_grad()
         g_loss.backward()
         g_optimizer.step()
+
+        wandb.log(log_dict, step=iteration)
 
         # Print the log info
         if iteration % opts.log_step == 0:
@@ -314,8 +330,10 @@ def create_parser():
     parser.add_argument('--image_size', type=int, default=64)
     parser.add_argument('--disc', type=str, default='dc')  # or 'patch'
     parser.add_argument('--gen', type=str, default='cycle')
-    parser.add_argument('--g_conv_dim', type=int, default=32)
-    parser.add_argument('--d_conv_dim', type=int, default=32)
+    parser.add_argument('--g_conv_dim', type=int, default=64)
+    # parser.add_argument('--g_conv_dim', type=int, default=32)
+    parser.add_argument('--d_conv_dim', type=int, default=64)
+    # parser.add_argument('--d_conv_dim', type=int, default=32)
     parser.add_argument('--norm', type=str, default='instance')
     parser.add_argument('--use_cycle_consistency_loss', action='store_true')
     parser.add_argument('--init_zero_weights', action='store_true')
@@ -353,23 +371,30 @@ if __name__ == '__main__':
     parser = create_parser()
     opts = parser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = opts.gpu
+    tag = f'cyclegan_{opts.data_preprocess}_{opts.disc}_{opts.gen}'
+    if opts.use_cycle_consistency_loss:
+        tag += '_cycle'
+    if opts.use_diffaug:
+        tag += '_diffaug'
+
     opts.sample_dir = os.path.join(
-        'output/', opts.sample_dir,
+        'output/', opts.sample_dir, tag,
         '%s_%g' % (opts.X.split('/')[0], opts.lambda_cycle)
     )
-    opts.sample_dir += '%s_%s_%s_%s_%s' % (
-        opts.data_preprocess, opts.norm, opts.disc, opts.gen, opts.init_type
-    )
-    if opts.use_cycle_consistency_loss:
-        opts.sample_dir += '_cycle'
-    if opts.use_diffaug:
-        opts.sample_dir += '_diffaug'
+    # opts.sample_dir += '%s_%s_%s_%s_%s' % (
+        # opts.data_preprocess, opts.norm, opts.disc, opts.gen, opts.init_type
+    # )
 
     if os.path.exists(opts.sample_dir):
         cmd = 'rm %s/*' % opts.sample_dir
         os.system(cmd)
 
-    logger = SummaryWriter(opts.sample_dir)
+    wandb.init(
+        project='16726_p3',
+        config=opts,
+        name=tag,
+    )
+    # logger = SummaryWriter(opts.sample_dir)
 
     print_opts(opts)
     main(opts)
