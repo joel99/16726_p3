@@ -95,4 +95,8 @@ Full             |  -Cycle Consistency | -Patch Discriminator
 :---:|:---:|:---:
 ![fruit_full](./figures/fruit_ba_cyc_10k.png)  |  ![fruit_ablate_cyc](./figures/fruit_ba_ablate_cyc_10k.png) | ![fruit_ablate_patch](./figures/fruit_ba_ablate_patch_10k.png)
 
-Overall: Qualitatively, the results are all decent but not spectacular. Cycle consistency slightly improves structure conservation, e.g. compare the full vs ablation in orange-2-apple row 2 columns 3 and 4; the overall pith it still retained whereas without cycle consistency the target appears more similar to an uncut apple; other outlines are more blurred. Patch discrimination ablation most noticeably introduces artifactual microtextures in the generated images, e.g. consider col 3 and 4 for the last row of apple2orange.
+Overall: Qualitatively, the results are all decent but not spectacular. Undedrstandably, many images do not map easily, e.g, when source contains people instead of just apples. Interestingly, many color maps are not very robust; note that apples, which are more diverse in color, often map to strangely colored oranges.
+
+Cycle consistency slightly improves structure conservation, e.g. compare the full vs ablation in orange-2-apple row 2 columns 3 and 4; the overall pith it still retained whereas without cycle consistency the target appears more similar to an uncut apple; other outlines are more blurred. This is fairly consistent with the intended design of cycle consistency.
+
+Patch discrimination ablation most noticeably introduces artifactual microtextures in the generated images, e.g. consider col 3 and 4 for the last row of apple2orange (which is totally consistent with the intended effect of patch wise loss). However, the difference is not clear for the cat-2-cat maps, I think this is largely because the mapping is harder and the models are both kind of poor.
