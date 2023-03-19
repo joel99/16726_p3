@@ -44,9 +44,11 @@ Due to the DCGAN objective formulation, we know discriminator scores are at chan
 ### Deluxe + DiffAugment Samples
 
 Early (Iteration 200)
+
 ![Iter200DCGAN](./figures/dcgan_200.png)
 
 Late (Iteration 6400)
+
 ![Iter6400DCGANDeluxe](./figures/dcgan_6400.png)
 
 
@@ -55,6 +57,7 @@ Early iterations are plain noisy -- the only feature captured is gross color dis
 
 ### DCGAN Misc
 For completeness we also show the vanilla, unaugmented samples (others shown in previous section).
+
 ![vanilla](./figures/vanilla.png)
 
 ## CycleGAN
@@ -64,9 +67,11 @@ Note I apply DiffAug by default based on results in previous seciton; also pilot
 ### Initial 1K iteration tests
 
 No cycle consistency
+
 ![no_cycle_test](./figures/cyc_no_cycle_1k.png)
 
 With cycle consistency
+
 ![cycle_test](./figures/cyc_with_cycle_1k.png)
 
 There is slightly more spatial conservation with the cycle consistency loss, but more importantly the colors are less blown out as well. Cycle-consistency may have stabilizing effects.
@@ -74,11 +79,13 @@ There is slightly more spatial conservation with the cycle consistency loss, but
 ### 10K iteration tests
 We run this comparison with and without cycle consistency loss, and with and without patch discriminator.
 ### Grumpy Cat -> Russian Blue
+
 Full             |  -Cycle Consistency | -Patch Discriminator
 :---:|:---:|:---:
 ![cat_full](./figures/cat_ab_cyc_10k.png)  |  ![cat_ablate_cyc](./figures/cat_ab_ablate_cyc_10k.png) | ![cat_ablate_patch](./figures/cat_ab_ablate_patch_10k.png)
 
 ### Grumpy Cat <- Russian Blue
+
 Full             |  -Cycle Consistency | -Patch Discriminator
 :---:|:---:|:---:
 ![cat_full](./figures/cat_ba_cyc_10k.png)  |  ![cat_ablate_cyc](./figures/cat_ba_ablate_cyc_10k.png) | ![cat_ablate_patch](./figures/cat_ba_ablate_patch_10k.png)
