@@ -149,8 +149,8 @@ class CycleGenerator(nn.Module):
         self.resnet_block = ResnetBlock(conv_dim=conv_dim, norm=norm, activ='relu')
 
         # 3. Define the decoder part of the generator
-        self.up_conv1 = up_conv(64, 32, 5, 1, 2, norm, activ='relu')
-        self.up_conv2 = up_conv(32, 3, 5, 1, 2, norm, activ='tanh')
+        self.up_conv1 = up_conv(64, 32, 5, 1, 2, norm=norm, activ='relu')
+        self.up_conv2 = up_conv(32, 3, 5, 1, 2, norm=norm, activ='tanh')
 
     def forward(self, x):
         """
@@ -209,7 +209,7 @@ class PatchDiscriminator(nn.Module):
         self.conv1 = conv(3, 32, 4, 2, 1, norm, False, 'relu')
         self.conv2 = conv(32, 64, 4, 2, 1, norm, False, 'relu')
         self.conv3 = conv(64, 128, 4, 2, 1, norm, False, 'relu')
-        self.conv4 = conv(128, 256, 4, 2, 1, norm, False, 'relu')
+        self.conv4 = conv(128, 256, 4, 2, 1, None, False, None)
 
 
     def forward(self, x):

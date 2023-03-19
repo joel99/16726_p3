@@ -37,6 +37,7 @@ from data_loader import get_data_loader
 from models import CycleGenerator, DCDiscriminator, PatchDiscriminator
 from diff_augment import DiffAugment
 policy = 'color,translation,cutout'
+# policy = 'translation,cutout'
 
 
 SEED = 11
@@ -195,8 +196,14 @@ def training_loop(dataloader_X, dataloader_Y, opts):
 
         # TRAIN THE DISCRIMINATORS
         # 1. Compute the discriminator losses on real images
-        D_X_loss = torch.mean((D_X(images_X) - 1)**2)
-        D_Y_loss = torch.mean((D_Y(images_Y) - 1)**2)
+        if opts.use_diffaug:
+            aug_real_X = DiffAugment(images_X, policy=policy)
+            aug_real_Y = DiffAugment(images_Y, policy=policy)
+            D_X_loss = torch.mean((D_X(aug_real_X) - 1)**2)
+            D_Y_loss = torch.mean((D_Y(aug_real_Y) - 1)**2)
+        else:
+            D_X_loss = torch.mean((D_X(images_X) - 1)**2)
+            D_Y_loss = torch.mean((D_Y(images_Y) - 1)**2)
 
         d_real_loss = D_X_loss + D_Y_loss
 
@@ -204,13 +211,21 @@ def training_loop(dataloader_X, dataloader_Y, opts):
         fake_X = G_YtoX(images_Y)
 
         # 3. Compute the loss for D_X
-        D_X_loss = torch.mean(D_X(fake_X)**2)
+        if opts.use_diffaug:
+            aug_fake_X = DiffAugment(fake_X, policy=policy)
+            D_X_loss = torch.mean(D_X(aug_fake_X)**2)
+        else:
+            D_X_loss = torch.mean(D_X(fake_X)**2)
 
         # 4. Generate domain-Y-like images based on real images in domain X
         fake_Y = G_XtoY(images_X)
 
         # 5. Compute the loss for D_Y
-        D_Y_loss = torch.mean(D_Y(fake_Y)**2)
+        if opts.use_diffaug:
+            aug_fake_Y = DiffAugment(fake_Y, policy=policy)
+            D_Y_loss = torch.mean(D_Y(aug_fake_Y)**2)
+        else:
+            D_Y_loss = torch.mean(D_Y(fake_Y)**2)
 
         d_fake_loss = D_X_loss + D_Y_loss
 
@@ -237,11 +252,15 @@ def training_loop(dataloader_X, dataloader_Y, opts):
         fake_X = G_YtoX(images_Y)
 
         # 2. Compute the generator loss based on domain X
-        g_loss = torch.mean((D_X(fake_X) - 1)**2)
+        if opts.use_diffaug:
+            aug_fake_X = DiffAugment(fake_X, policy=policy)
+            g_loss = torch.mean((D_X(aug_fake_X) - 1)**2)
+        else:
+            g_loss = torch.mean((D_X(fake_X) - 1)**2)
         # logger.add_scalar('G/XY/fake', g_loss, iteration)
         log_dict['G/XY/fake'] = g_loss
 
-        if opts.use_cycle_consistency_loss:
+        if opts.use_cycle_consistency_loss: # won't apply diffaug here, not sure how to
             # 3. Compute the cycle consistency loss (the reconstruction loss)
             cycle_consistency_loss = torch.mean(torch.abs(images_Y - G_XtoY(fake_X)))
 
@@ -254,7 +273,11 @@ def training_loop(dataloader_X, dataloader_Y, opts):
         fake_Y = G_XtoY(images_X)
 
         # 2. Compute the generator loss based on domain Y
-        yx_loss = torch.mean((D_Y(fake_Y) - 1)**2)
+        if opts.use_diffaug:
+            aug_fake_Y = DiffAugment(fake_Y, policy=policy)
+            yx_loss = torch.mean((D_Y(aug_fake_Y) - 1)**2)
+        else:
+            yx_loss = torch.mean((D_Y(fake_Y) - 1)**2)
         g_loss += yx_loss
         log_dict['G/YX/fake'] = yx_loss
         # logger.add_scalar('G/YX/fake', g_loss, iteration)
@@ -371,7 +394,7 @@ if __name__ == '__main__':
     parser = create_parser()
     opts = parser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = opts.gpu
-    tag = f'cyclegan_{opts.data_preprocess}_{opts.disc}_{opts.gen}'
+    tag = f'cyclegan_{opts.data_preprocess}_{opts.disc}_{opts.gen}_{"zero" if opts.init_zero_weights else "rand"}_{opts.norm}'
     if opts.use_cycle_consistency_loss:
         tag += '_cycle'
     if opts.use_diffaug:

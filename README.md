@@ -27,7 +27,7 @@ DiffAug
 
 ![DiffAug](./figures/dcgan_diff.png)
 
-The samples are quite different; notably the standard deluxe augmentation has heavy colorization artifacts (despite my including color jitter augmentation). Also, there may be slightly more diversity in the DiffAug samples. Implementation wise this is likely because DiffAug also applies to generator samples, whereas standard augmentation only applies to real samples. Standard augmentation cripples the discriminator with respect to the augmented feature, and the generator no longer has incentive to choose the realistic setting of the augmented feature (hence color distortion). DiffAug still has this effect on the discriminator, but also allows the generator to learn realistic settings of the augmented feature (since it's differentiable).
+The samples are quite different; notably the standard deluxe augmentation has heavy colorization artifacts (despite my including color jitter augmentation). Also, there may be slightly more diversity in the DiffAug samples. Implementation wise this is likely because DiffAug also applies to generator samples, whereas standard augmentation only applies to real samples. Standard augmentation cripples the discriminator with respect to the augmented feature, and the generator no longer has incentive to choose the realistic setting of the augmented feature (hence color distortion). (Though note, not all samples have this distortion; some look reasonable still) DiffAug still has this effect on the discriminator, but also allows the generator to learn realistic settings of the augmented feature (since it's differentiable).
 
 ### Training Curves
 Plots are taken from wandb. Curves are annotated.
@@ -58,3 +58,31 @@ For completeness we also show the vanilla, unaugmented samples (others shown in 
 ![vanilla](./figures/vanilla.png)
 
 ## CycleGAN
+
+Note I apply DiffAug by default based on results in previous seciton; also pilot without looked highly colorized. Based on tuning, it seemed like batch norm worked better than instance norm, `init_zero_weights` should be set to true, and `cycle_lambda=3` worked better than 1 or 10. It should be noted I discovered a bug _after_ all this tuning in the patch discriminator, which made a drastic difference; the previous tuning may not have been necessary.
+
+### Initial 1K iteration tests
+TODO
+No cycle consistency
+![no_cycle_test](./figures/cyc_no_cycle_1k.png)
+
+With cycle consistency
+![cycle_test](./figures/cyc_with_cycle_1k.png)
+
+
+### 10K iteration tests
+We run this comparison with and without cycle consistency loss, and with and without patch discriminator.
+### Grumpy Cat
+Full             |  -Cycle Consistency | -Patch Discriminator
+:---:|:---:|:---:
+![cat_full](./figures/cat_full_10k.png)  |  ![cat_ablate_cyc](./figures/cat_ablate_cyc_10k.png) | ![cat_ablate_patch](./figures/cat_ablate_patch_10k.png)
+
+TODO discussion
+
+### Apple2Orange
+
+Full             |  -Cycle Consistency | -Patch Discriminator
+:---:|:---:|:---:
+![cat_full](./figures/cat_full_10k.png)  |  ![cat_ablate_cyc](./figures/cat_ablate_cyc_10k.png) | ![cat_ablate_patch](./figures/cat_ablate_patch_10k.png)
+
+TODO discussion
