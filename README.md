@@ -33,10 +33,10 @@ The samples are quite different; notably the standard deluxe augmentation has he
 Plots are taken from wandb. Curves are annotated.
 
 Discriminator
-![Discrim](./figures/dcgan_disc.jpg)
+![Discrim](./figures/dcgan_disc.png)
 
 Generator losses
-![Gen](./figures/dcgan_gen.jpg)
+![Gen](./figures/dcgan_gen.png)
 
 Comments:
 Due to the DCGAN objective formulation, we know discriminator scores are at chance around `0.25=(0.5 - 1)^2`.  In a balanced training, I would expect discriminator curves to oscillate below chance(since it generally has an easier job, especially in toy experiments such as this hw); improved regularization should increase discriminator loss towards this. Indeed we see the intuitive hierarchy of discriminator losses: vanilla DCGAN as lowest, both forms of regularization as higher, and combined regularization as highest. Conversely, the generators are high to low in that order. There is some decrease in losses on both ends, but overall the discriminator dominates. I think a qualitatively better curve would have discriminator loss eventually trending upward, but alas...
@@ -62,27 +62,37 @@ For completeness we also show the vanilla, unaugmented samples (others shown in 
 Note I apply DiffAug by default based on results in previous seciton; also pilot without looked highly colorized. Based on tuning, it seemed like batch norm worked better than instance norm, `init_zero_weights` should be set to true, and `cycle_lambda=3` worked better than 1 or 10. It should be noted I discovered a bug _after_ all this tuning in the patch discriminator, which made a drastic difference; the previous tuning may not have been necessary.
 
 ### Initial 1K iteration tests
-TODO
+
 No cycle consistency
 ![no_cycle_test](./figures/cyc_no_cycle_1k.png)
 
 With cycle consistency
 ![cycle_test](./figures/cyc_with_cycle_1k.png)
 
+There is slightly more spatial conservation with the cycle consistency loss, but more importantly the colors are less blown out as well. Cycle-consistency may have stabilizing effects.
 
 ### 10K iteration tests
 We run this comparison with and without cycle consistency loss, and with and without patch discriminator.
-### Grumpy Cat
+### Grumpy Cat -> Russian Blue
 Full             |  -Cycle Consistency | -Patch Discriminator
 :---:|:---:|:---:
-![cat_full](./figures/cat_full_10k.png)  |  ![cat_ablate_cyc](./figures/cat_ablate_cyc_10k.png) | ![cat_ablate_patch](./figures/cat_ablate_patch_10k.png)
+![cat_full](./figures/cat_ab_cyc_10k.png)  |  ![cat_ablate_cyc](./figures/cat_ab_ablate_cyc_10k.png) | ![cat_ablate_patch](./figures/cat_ab_ablate_patch_10k.png)
 
-TODO discussion
+### Grumpy Cat <- Russian Blue
+Full             |  -Cycle Consistency | -Patch Discriminator
+:---:|:---:|:---:
+![cat_full](./figures/cat_ba_cyc_10k.png)  |  ![cat_ablate_cyc](./figures/cat_ba_ablate_cyc_10k.png) | ![cat_ablate_patch](./figures/cat_ba_ablate_patch_10k.png)
+
+### Orange2Apple
+
+Full             |  -Cycle Consistency | -Patch Discriminator
+:---:|:---:|:---:
+![fruit_full](./figures/fruit_ab_cyc_10k.png)  |  ![fruit_ablate_cyc](./figures/fruit_ab_ablate_cyc_10k.png) | ![fruit_ablate_patch](./figures/fruit_ab_ablate_patch_10k.png)
 
 ### Apple2Orange
 
 Full             |  -Cycle Consistency | -Patch Discriminator
 :---:|:---:|:---:
-![cat_full](./figures/cat_full_10k.png)  |  ![cat_ablate_cyc](./figures/cat_ablate_cyc_10k.png) | ![cat_ablate_patch](./figures/cat_ablate_patch_10k.png)
+![fruit_full](./figures/fruit_ba_cyc_10k.png)  |  ![fruit_ablate_cyc](./figures/fruit_ba_ablate_cyc_10k.png) | ![fruit_ablate_patch](./figures/fruit_ba_ablate_patch_10k.png)
 
-TODO discussion
+Overall: Qualitatively, the results are all decent but not spectacular. Cycle consistency slightly improves structure conservation, e.g. compare the full vs ablation in orange-2-apple row 2 columns 3 and 4; the overall pith it still retained whereas without cycle consistency the target appears more similar to an uncut apple; other outlines are more blurred. Patch discrimination ablation most noticeably introduces artifactual microtextures in the generated images, e.g. consider col 3 and 4 for the last row of apple2orange.
